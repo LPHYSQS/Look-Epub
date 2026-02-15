@@ -57,6 +57,30 @@ Look Epub is a fully local EPUB e-book reader designed for users who seek a clea
 - Node.js >= 18.0.0
 - npm >= 9.0.0
 
+#### Install Node.js
+
+**Option 1: Download from Official Website**
+- Visit [Node.js Official Website](https://nodejs.org/)
+- Download the LTS (Long Term Support) version
+- Run the installer, ensure "Add to PATH" is checked
+
+**Option 2: Use Package Manager**
+- Windows: `winget install OpenJS.NodeJS.LTS`
+- macOS: `brew install node@18`
+- Linux: `curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - && sudo apt-get install -y nodejs`
+
+#### Check Installation
+
+```bash
+# Check Node.js version
+node --version
+
+# Check npm version
+npm --version
+```
+
+If version numbers are displayed (e.g., `v18.x.x` and `9.x.x`), the installation is successful.
+
 ### Install Dependencies
 
 ```bash
