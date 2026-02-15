@@ -1,0 +1,5 @@
+export { EpubParser } from './epub-parser'
+export { ZipExtractor } from './zip-extractor'
+export { OpfParser } from './opf-parser'
+export { NcxParser } from './ncx-parser'
+export { NavParser } from './nav-parser'
