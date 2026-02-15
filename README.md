@@ -1,7 +1,7 @@
 # Look Epub
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.1-blue" alt="Version">
   <img src="https://img.shields.io/badge/Vue-3.5.13-42b883" alt="Vue">
   <img src="https://img.shields.io/badge/TypeScript-5.6.3-3178c6" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-6.0.5-646CFF" alt="Vite">
@@ -169,7 +169,7 @@ ContentRenderer 负责将 EPUB 内容渲染到页面：
 
 ## 📝 更新日志
 
-### v1.0.0 (2026-01-15)
+### v0.1 (2026-01-15)
 - 初始版本发布
 - 支持书架管理（导入、搜索、编辑、删除）
 - 支持 EPUB 阅读器
