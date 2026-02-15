@@ -69,7 +69,7 @@ npm install
 npm run dev
 ```
 
-启动后访问 http://localhost:5173
+服务启动后，浏览器将自动打开。若未自动打开，请查看终端显示的实际端口（默认 http://localhost:3000）。
 
 ### 构建生产版本
 

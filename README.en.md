@@ -69,7 +69,7 @@ npm install
 npm run dev
 ```
 
-Access at http://localhost:5173
+After starting, the browser will open automatically. If not, check the terminal for the actual port (default http://localhost:3000).
 
 ### Build for Production
 
