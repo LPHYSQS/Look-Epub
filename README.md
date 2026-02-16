@@ -1,7 +1,7 @@
 # Look Epub
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.2-blue" alt="Version">
   <img src="https://img.shields.io/badge/Vue-3.5.13-42b883" alt="Vue">
   <img src="https://img.shields.io/badge/TypeScript-5.6.3-3178c6" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-6.0.5-646CFF" alt="Vite">
@@ -192,6 +192,11 @@ ContentRenderer 负责将 EPUB 内容渲染到页面：
 已逝情殇
 
 ## 📝 更新日志
+
+### v0.2 (2026-02-16)
+- 阅读界面状态栏优化：支持鼠标悬停展开/收起动画
+- 目录面板优化：打开时自动定位到当前阅读章节
+- 状态栏热区检测优化：提升交互灵敏度
 
 ### v0.1 (2026-01-15)
 - 初始版本发布

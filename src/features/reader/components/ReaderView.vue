@@ -16,6 +16,7 @@ const contentRef = ref<HTMLElement | null>(null)
 const wrapperRef = ref<HTMLElement | null>(null)
 const showToc = ref(false)
 const showSettings = ref(false)
+const isToolbarVisible = ref(false)
 
 const readerTheme = computed({
   get: () => readerStore.settings.theme,
@@ -100,16 +101,37 @@ function handleContentClick(e: MouseEvent) {
 function toggleToc() {
   showToc.value = !showToc.value
   showSettings.value = false
+  if (showToc.value) {
+    isToolbarVisible.value = true
+  }
 }
 
 function toggleSettings() {
   showSettings.value = !showSettings.value
   showToc.value = false
+  if (showSettings.value) {
+    isToolbarVisible.value = true
+  }
 }
 
 function closePanels() {
   showToc.value = false
   showSettings.value = false
+  isToolbarVisible.value = false
+}
+
+function showToolbar() {
+  isToolbarVisible.value = true
+}
+
+function hideToolbar() {
+  if (!showToc.value && !showSettings.value) {
+    isToolbarVisible.value = false
+  }
+}
+
+function handleToolbarMouseEnter() {
+  isToolbarVisible.value = true
 }
 
 watch(() => readerStore.currentSpineIndex, () => {
@@ -161,21 +183,32 @@ async function checkFrontendStatus() {
 
 <template>
   <div class="reader-view" :class="`theme-${readerTheme}`">
-    <Toolbar
-      :title="readerStore.currentBook?.metadata.title || ''"
-      :chapter-title="chapterTitle"
-      :progress="readerStore.progress"
-      :can-go-prev="readerStore.currentSpineIndex > 0"
-      :can-go-next="readerStore.currentSpineIndex < readerStore.totalSpineItems - 1"
-      :frontend-status="frontendStatus"
-      @toggle-toc="toggleToc"
-      @toggle-settings="toggleSettings"
-      @close="readerStore.closeBook"
-      @prev-page="readerStore.prevPage"
-      @next-page="readerStore.nextPage"
-    />
+    <div 
+      class="toolbar-hover-zone"
+      @mouseenter="showToolbar"
+    ></div>
+    <div 
+      class="toolbar-wrapper"
+      :class="{ visible: isToolbarVisible }"
+      @mouseenter="handleToolbarMouseEnter"
+      @mouseleave="hideToolbar"
+    >
+      <Toolbar
+        :title="readerStore.currentBook?.metadata.title || ''"
+        :chapter-title="chapterTitle"
+        :progress="readerStore.progress"
+        :can-go-prev="readerStore.currentSpineIndex > 0"
+        :can-go-next="readerStore.currentSpineIndex < readerStore.totalSpineItems - 1"
+        :frontend-status="frontendStatus"
+        @toggle-toc="toggleToc"
+        @toggle-settings="toggleSettings"
+        @close="readerStore.closeBook"
+        @prev-page="readerStore.prevPage"
+        @next-page="readerStore.nextPage"
+      />
+    </div>
 
-    <div class="reader-content-wrapper" ref="wrapperRef" @click.self="closePanels">
+    <div class="reader-content-wrapper" ref="wrapperRef" @click.self="closePanels" @mouseenter="hideToolbar">
       <div
         ref="contentRef"
         class="epub-content"
@@ -235,12 +268,37 @@ async function checkFrontendStatus() {
   flex-direction: column;
   background-color: var(--reader-bg-color, #fff);
   color: var(--reader-text-color, #333);
+  position: relative;
+}
+
+.toolbar-hover-zone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  z-index: 99;
+  cursor: pointer;
+}
+
+.toolbar-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  transform: translateY(-100%);
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  z-index: 100;
+}
+
+.toolbar-wrapper.visible {
+  transform: translateY(0);
 }
 
 .reader-content-wrapper {
   flex: 1;
   overflow-y: auto;
-  padding: 60px 0 20px;
+  padding: 20px 0;
 }
 
 .nav-buttons {

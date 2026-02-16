@@ -81,10 +81,6 @@ const emit = defineEmits<{
 
 <style scoped>
 .toolbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
   height: 50px;
   background: #fff;
   border-bottom: 1px solid #eee;
@@ -92,7 +88,6 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: space-between;
   padding: 0 15px;
-  z-index: 100;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 

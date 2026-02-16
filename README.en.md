@@ -1,7 +1,7 @@
 # Look Epub
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.2-blue" alt="Version">
   <img src="https://img.shields.io/badge/Vue-3.5.13-42b883" alt="Vue">
   <img src="https://img.shields.io/badge/TypeScript-5.6.3-3178c6" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-6.0.5-646CFF" alt="Vite">
@@ -192,6 +192,11 @@ This project is open-sourced under the MIT License.
 已逝情殇 (Yishi Qing Shang)
 
 ## 📝 Changelog
+
+### v0.2 (2026-02-16)
+- Reader toolbar optimization: hover to expand/collapse with smooth animation
+- TOC panel optimization: auto-scroll to current chapter when opened
+- Toolbar hover zone detection optimization: improved interaction sensitivity
 
 ### v0.1 (2026-01-15)
 - Initial release

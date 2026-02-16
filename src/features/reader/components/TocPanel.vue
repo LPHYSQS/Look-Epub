@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import type { EpubTocItem } from '@/types'
 
 const props = defineProps<{
@@ -11,6 +11,8 @@ const emit = defineEmits<{
   select: [index: number]
   close: []
 }>()
+
+const tocContentRef = ref<HTMLElement | null>(null)
 
 function handleItemClick(_item: EpubTocItem, index: number) {
   emit('select', index)
@@ -34,6 +36,20 @@ function flattenToc(items: EpubTocItem[], level = 0): Array<{ item: EpubTocItem;
 }
 
 const flatToc = computed(() => flattenToc(props.toc))
+
+function scrollToCurrentChapter() {
+  nextTick(() => {
+    if (!tocContentRef.value) return
+    const activeItem = tocContentRef.value.querySelector('.toc-item.active') as HTMLElement
+    if (activeItem) {
+      activeItem.scrollIntoView({ behavior: 'auto', block: 'center' })
+    }
+  })
+}
+
+watch(() => props.toc, () => {
+  scrollToCurrentChapter()
+}, { immediate: true })
 </script>
 
 <template>
@@ -42,7 +58,7 @@ const flatToc = computed(() => flattenToc(props.toc))
       <h2>目录</h2>
       <button class="close-btn" @click="emit('close')">×</button>
     </div>
-    <div class="toc-content">
+    <div class="toc-content" ref="tocContentRef">
       <div v-if="flatToc.length === 0" class="toc-empty">
         暂无目录
       </div>
