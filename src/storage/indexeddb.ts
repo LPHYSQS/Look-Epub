@@ -1,5 +1,5 @@
 const DB_NAME = 'look-epub-db'
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 interface DBSchema {
   books: {
@@ -40,6 +40,25 @@ interface DBSchema {
       createdAt: number
     }
   }
+  readingStats: {
+    key: string
+    value: {
+      bookId: string
+      records: Array<{
+        spineIndex: number
+        charCount: number
+        startTime: number
+        endTime: number
+        durationMs: number
+        charsPerMinute: number
+      }>
+      totalCharsRead: number
+      totalDurationMs: number
+      averageSpeed: number
+      lastUpdatedAt: number
+      chapterCharCounts: Record<number, number>
+    }
+  }
 }
 
 type StoreNames = keyof DBSchema
@@ -74,6 +93,10 @@ class IndexedDBManager {
         if (!db.objectStoreNames.contains('bookmarks')) {
           const bookmarkStore = db.createObjectStore('bookmarks', { keyPath: 'id' })
           bookmarkStore.createIndex('bookId', 'bookId')
+        }
+
+        if (!db.objectStoreNames.contains('readingStats')) {
+          db.createObjectStore('readingStats', { keyPath: 'bookId' })
         }
       }
     })

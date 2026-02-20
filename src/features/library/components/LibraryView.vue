@@ -680,12 +680,12 @@ function restartApp() {
         <div class="about-content">
           <div class="about-logo">📚</div>
           <h2 class="about-title">Look Epub</h2>
-          <div class="about-version">版本 V0.2</div>
+          <div class="about-version">版本 V1.0</div>
           <div class="about-divider"></div>
           <div class="about-section">
             <h3>项目信息</h3>
-            <p><strong>更新日期：</strong>2026年2月16日</p>
-            <p><strong>第二版更新</strong></p>
+            <p><strong>更新日期：</strong>2026年2月20日</p>
+            <p><strong>第三版更新</strong></p>
             <p><strong>项目作者：</strong>已逝情殇</p>
           </div>
           <div class="about-divider"></div>

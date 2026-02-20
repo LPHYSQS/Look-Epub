@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, onMounted } from 'vue'
 import { useReaderStore, useLibraryStore } from '@/stores'
 import LibraryView from '@/features/library/components/LibraryView.vue'
 import ReaderView from '@/features/reader/components/ReaderView.vue'
@@ -12,7 +12,12 @@ const showReader = computed(() => readerStore.currentBook !== null)
 watch(showReader, (newVal, oldVal) => {
   if (oldVal === true && newVal === false) {
     libraryStore.loadLibrary()
+    document.title = 'Look Epub'
   }
+})
+
+onMounted(() => {
+  document.title = 'Look Epub'
 })
 </script>
 

@@ -160,6 +160,21 @@ watch(() => themeStore.theme, (newTheme) => {
           class="slider"
         />
       </div>
+
+      <div class="setting-group">
+        <div class="toggle-setting">
+          <label>连续性阅读</label>
+          <span class="toggle-hint">滚动到底部自动加载下一章</span>
+        </div>
+        <label class="toggle-switch">
+          <input
+            type="checkbox"
+            :checked="settings.continuousReading"
+            @change="emit('update', { continuousReading: ($event.target as HTMLInputElement).checked })"
+          />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
   </div>
 </template>
@@ -515,5 +530,94 @@ watch(() => themeStore.theme, (newTheme) => {
   border-radius: 50%;
   background: #4a90d9;
   cursor: pointer;
+}
+
+.toggle-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toggle-setting label {
+  margin-bottom: 0;
+}
+
+.toggle-hint {
+  font-size: 12px;
+  color: #999;
+}
+
+[data-theme="dark"] .toggle-hint {
+  color: #777;
+}
+
+.theme-sepia .toggle-hint {
+  color: #8b7355;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  margin-top: 10px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #4a90d9;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+[data-theme="dark"] .toggle-slider {
+  background-color: #444;
+}
+
+[data-theme="dark"] .toggle-slider:before {
+  background-color: #ddd;
+}
+
+.theme-sepia .toggle-slider {
+  background-color: #d4c9a8;
+}
+
+.theme-sepia .toggle-slider:before {
+  background-color: #fff;
+}
+
+.theme-sepia .toggle-switch input:checked + .toggle-slider {
+  background-color: #8b7355;
 }
 </style>

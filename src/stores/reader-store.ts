@@ -1,9 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { EpubBook, ReaderSettings, EpubLocation } from '@/types'
+import type { EpubBook, ReaderSettings, EpubLocation, ReadingStats, ChapterReadingRecord } from '@/types'
 import { EpubParser } from '@/core/parser'
 import { StyleInjector } from '@/core/renderer'
 import { db, loadSettings, saveSettings } from '@/storage'
+import {
+  countChars,
+  calculateReadingSpeed,
+  createEmptyReadingStats,
+  addReadingRecord,
+  updateChapterCharCount,
+  estimateRemainingTime,
+  formatReadingTime
+} from '@/utils/reading-stats'
 
 export const useReaderStore = defineStore('reader', () => {
   const currentBook = ref<EpubBook | null>(null)
@@ -13,6 +22,10 @@ export const useReaderStore = defineStore('reader', () => {
   const error = ref<string | null>(null)
   const settings = ref<ReaderSettings>(loadSettings())
   const styleInjector = new StyleInjector()
+  
+  const readingStats = ref<ReadingStats | null>(null)
+  const chapterStartTime = ref<number>(0)
+  const lastSpineIndex = ref<number>(-1)
 
   const totalSpineItems = computed(() => currentBook.value?.spine.length || 0)
   
@@ -33,6 +46,21 @@ export const useReaderStore = defineStore('reader', () => {
       chapterHref: currentChapter.value.href,
       progress: progress.value
     }
+  })
+
+  const remainingTimeMinutes = computed(() => {
+    if (!currentBook.value || !readingStats.value) return null
+    return estimateRemainingTime(
+      currentSpineIndex.value,
+      totalSpineItems.value,
+      readingStats.value.chapterCharCounts,
+      readingStats.value.averageSpeed
+    )
+  })
+
+  const remainingTimeText = computed(() => {
+    if (remainingTimeMinutes.value === null) return ''
+    return formatReadingTime(remainingTimeMinutes.value)
   })
 
   async function importBook(file: File): Promise<{ id: string; isDuplicate: boolean; error?: string } | null> {
@@ -85,6 +113,9 @@ export const useReaderStore = defineStore('reader', () => {
         bookId.value = id
         await saveBookToLibrary(file, book, id)
       }
+      
+      await loadReadingStats()
+      startChapterTracking()
     } catch (e) {
       error.value = e instanceof Error ? e.message : '加载书籍失败'
       console.error('Failed to load book:', e)
@@ -113,6 +144,9 @@ export const useReaderStore = defineStore('reader', () => {
       if (savedProgress) {
         currentSpineIndex.value = savedProgress.spineIndex
       }
+      
+      await loadReadingStats()
+      startChapterTracking()
     } catch (e) {
       error.value = e instanceof Error ? e.message : '加载书籍失败'
       console.error('Failed to load book from library:', e)
@@ -153,11 +187,103 @@ export const useReaderStore = defineStore('reader', () => {
     })
   }
 
+  async function loadReadingStats(): Promise<void> {
+    if (!bookId.value) return
+    
+    try {
+      const stats = await db.get('readingStats', bookId.value)
+      if (stats) {
+        readingStats.value = stats
+      } else {
+        readingStats.value = createEmptyReadingStats(bookId.value)
+      }
+    } catch (e) {
+      console.error('Failed to load reading stats:', e)
+      readingStats.value = createEmptyReadingStats(bookId.value!)
+    }
+  }
+
+  async function saveReadingStats(): Promise<void> {
+    if (!readingStats.value || !bookId.value) return
+    
+    try {
+      await db.put('readingStats', readingStats.value)
+    } catch (e) {
+      console.error('Failed to save reading stats:', e)
+    }
+  }
+
+  function startChapterTracking(): void {
+    chapterStartTime.value = Date.now()
+    lastSpineIndex.value = currentSpineIndex.value
+  }
+
+  async function recordChapterCompletion(fromIndex: number, toIndex: number): Promise<void> {
+    if (!currentBook.value || !readingStats.value) return
+    
+    const endTime = Date.now()
+    const durationMs = endTime - chapterStartTime.value
+    
+    if (durationMs >= 5000 && fromIndex >= 0) {
+      const charCount = await getChapterCharCount(fromIndex)
+      
+      if (charCount > 0) {
+        const speed = calculateReadingSpeed(charCount, durationMs)
+        
+        if (speed > 0) {
+          const record: ChapterReadingRecord = {
+            spineIndex: fromIndex,
+            charCount,
+            startTime: chapterStartTime.value,
+            endTime,
+            durationMs,
+            charsPerMinute: speed
+          }
+          
+          readingStats.value = addReadingRecord(readingStats.value, record)
+          readingStats.value = updateChapterCharCount(readingStats.value, fromIndex, charCount)
+          
+          await saveReadingStats()
+        }
+      }
+    }
+    
+    chapterStartTime.value = Date.now()
+    lastSpineIndex.value = toIndex
+  }
+
+  async function getChapterCharCount(spineIndex: number): Promise<number> {
+    if (!currentBook.value) return 0
+    
+    if (readingStats.value?.chapterCharCounts[spineIndex]) {
+      return readingStats.value.chapterCharCounts[spineIndex]
+    }
+    
+    const spineItem = currentBook.value.spine[spineIndex]
+    if (!spineItem) return 0
+    
+    const resource = currentBook.value.resources.get(spineItem.href)
+    if (!resource) return 0
+    
+    let content: string
+    if (typeof resource.content === 'string') {
+      content = resource.content
+    } else {
+      content = new TextDecoder('utf-8').decode(resource.content)
+    }
+    
+    return countChars(content)
+  }
+
   function goToChapter(index: number): void {
     if (!currentBook.value) return
     if (index >= 0 && index < totalSpineItems.value) {
+      const fromIndex = currentSpineIndex.value
       currentSpineIndex.value = index
       saveProgress()
+      if (fromIndex !== index) {
+        recordChapterCompletion(fromIndex, index)
+      }
     }
   }
 
@@ -177,9 +303,15 @@ export const useReaderStore = defineStore('reader', () => {
 
   function closeBook(): void {
     saveProgress()
+    if (readingStats.value) {
+      saveReadingStats()
+    }
     currentBook.value = null
     bookId.value = null
     currentSpineIndex.value = 0
+    readingStats.value = null
+    chapterStartTime.value = 0
+    lastSpineIndex.value = -1
     styleInjector.remove()
   }
 
@@ -235,11 +367,19 @@ export const useReaderStore = defineStore('reader', () => {
     currentChapter,
     progress,
     location,
+    readingStats,
+    remainingTimeMinutes,
+    remainingTimeText,
     importBook,
     loadBook,
     loadBookFromLibrary,
     checkBookAvailability,
     saveProgress,
+    loadReadingStats,
+    saveReadingStats,
+    startChapterTracking,
+    recordChapterCompletion,
+    getChapterCharCount,
     goToChapter,
     nextPage,
     prevPage,

@@ -18,6 +18,11 @@ const showToc = ref(false)
 const showSettings = ref(false)
 const isToolbarVisible = ref(false)
 
+const loadedChapters = ref<Set<number>>(new Set([0]))
+const isLoadingMore = ref(false)
+const currentVisibleChapter = ref(0)
+const isScrollingToChapter = ref(false)
+
 const readerTheme = computed({
   get: () => readerStore.settings.theme,
   set: (value) => readerStore.updateSettings({ theme: value })
@@ -34,20 +39,39 @@ watch(() => readerStore.settings.theme, (newTheme) => {
 })
 
 const content = computed(() => {
-  if (!readerStore.currentBook || !contentRef.value) return ''
-  const renderer = new ContentRenderer(readerStore.currentBook, contentRef.value)
-  return renderer.render(readerStore.currentSpineIndex)
+  if (!readerStore.currentBook) return ''
+  const renderer = new ContentRenderer(readerStore.currentBook, null as any)
+  
+  if (readerStore.settings.continuousReading) {
+    const chapters: string[] = []
+    const sortedIndices = Array.from(loadedChapters.value).sort((a, b) => a - b)
+    for (const index of sortedIndices) {
+      const chapterContent = renderer.render(index)
+      const title = getChapterTitleByIndex(index)
+      chapters.push(`<div class="chapter-section" data-chapter-index="${index}" data-chapter-title="${title}">${chapterContent}</div>`)
+    }
+    return chapters.join('<div class="chapter-divider"></div>')
+  } else {
+    return renderer.render(readerStore.currentSpineIndex)
+  }
 })
 
 const chapterTitle = computed(() => {
+  if (readerStore.settings.continuousReading) {
+    const index = currentVisibleChapter.value
+    return getChapterTitleByIndex(index)
+  }
+  return getChapterTitleByIndex(readerStore.currentSpineIndex)
+})
+
+function getChapterTitleByIndex(index: number): string {
   const book = readerStore.currentBook
-  const index = readerStore.currentSpineIndex
   if (!book || !book.spine[index]) return ''
   
   const href = book.spine[index].href
   const tocItem = findTocItem(book.toc, href)
   return tocItem?.title || `第 ${index + 1} 章`
-})
+}
 
 function findTocItem(items: EpubTocItem[], href: string): EpubTocItem | null {
   for (const item of items) {
@@ -92,6 +116,10 @@ function handleContentClick(e: MouseEvent) {
         s => s.href.includes(href.split('#')[0])
       )
       if (index >= 0) {
+        if (readerStore.settings.continuousReading) {
+          loadedChapters.value = new Set([index])
+          currentVisibleChapter.value = index
+        }
         readerStore.goToChapter(index)
       }
     }
@@ -134,30 +162,154 @@ function handleToolbarMouseEnter() {
   isToolbarVisible.value = true
 }
 
-watch(() => readerStore.currentSpineIndex, () => {
+function handleScroll() {
+  if (!readerStore.settings.continuousReading) return
+  
+  const wrapper = wrapperRef.value
+  if (!wrapper) return
+  
+  updateVisibleChapter()
+  
+  const { scrollTop, scrollHeight, clientHeight } = wrapper
+  const isNearBottom = scrollTop + clientHeight >= scrollHeight - 200
+  
+  if (isNearBottom && !isLoadingMore.value) {
+    loadNextChapter()
+  }
+}
+
+function updateVisibleChapter() {
+  if (!contentRef.value || !wrapperRef.value) return
+  
+  const sections = contentRef.value.querySelectorAll('.chapter-section')
+  const wrapperRect = wrapperRef.value.getBoundingClientRect()
+  const wrapperCenter = wrapperRect.top + wrapperRect.height / 3
+  
+  let closestIndex = currentVisibleChapter.value
+  let closestDistance = Infinity
+  
+  sections.forEach((section) => {
+    const rect = section.getBoundingClientRect()
+    const sectionCenter = rect.top + rect.height / 2
+    const distance = Math.abs(sectionCenter - wrapperCenter)
+    
+    if (distance < closestDistance) {
+      closestDistance = distance
+      const index = parseInt(section.getAttribute('data-chapter-index') || '0')
+      closestIndex = index
+    }
+  })
+  
+  if (closestIndex !== currentVisibleChapter.value) {
+    currentVisibleChapter.value = closestIndex
+    isScrollingToChapter.value = true
+    readerStore.currentSpineIndex = closestIndex
+    readerStore.saveProgress()
+    setTimeout(() => {
+      isScrollingToChapter.value = false
+    }, 100)
+  }
+}
+
+async function loadNextChapter() {
+  if (!readerStore.currentBook || isLoadingMore.value) return
+  
+  const maxLoaded = Math.max(...Array.from(loadedChapters.value))
+  const nextIndex = maxLoaded + 1
+  
+  if (nextIndex >= readerStore.totalSpineItems) return
+  if (loadedChapters.value.has(nextIndex)) return
+  
+  isLoadingMore.value = true
+  
+  const newChapters = new Set(loadedChapters.value)
+  newChapters.add(nextIndex)
+  loadedChapters.value = newChapters
+  
+  await nextTick()
+  await new Promise(resolve => setTimeout(resolve, 50))
+  
+  isLoadingMore.value = false
+}
+
+watch(() => readerStore.currentSpineIndex, (newIndex) => {
+  if (readerStore.settings.continuousReading) {
+    if (!loadedChapters.value.has(newIndex)) {
+      loadedChapters.value = new Set([newIndex])
+      currentVisibleChapter.value = newIndex
+    }
+  } else {
+    loadedChapters.value = new Set([newIndex])
+    currentVisibleChapter.value = newIndex
+  }
   readerStore.saveProgress()
+  
+  if (isScrollingToChapter.value) return
+  
   nextTick(() => {
     const wrapper = wrapperRef.value
     if (wrapper) {
-      wrapper.scrollTop = 0
-      wrapper.scrollTo({ top: 0, behavior: 'auto' })
-      setTimeout(() => {
-        if (wrapper) {
-          wrapper.scrollTop = 0
+      if (readerStore.settings.continuousReading) {
+        const targetSection = contentRef.value?.querySelector(`[data-chapter-index="${newIndex}"]`)
+        if (targetSection) {
+          targetSection.scrollIntoView({ behavior: 'auto', block: 'start' })
+        } else {
+          loadedChapters.value = new Set([newIndex])
+          currentVisibleChapter.value = newIndex
+          nextTick(() => {
+            const newTargetSection = contentRef.value?.querySelector(`[data-chapter-index="${newIndex}"]`)
+            if (newTargetSection) {
+              newTargetSection.scrollIntoView({ behavior: 'auto', block: 'start' })
+            }
+          })
         }
-      }, 50)
+      } else {
+        wrapper.scrollTop = 0
+        wrapper.scrollTo({ top: 0, behavior: 'auto' })
+        setTimeout(() => {
+          if (wrapper) {
+            wrapper.scrollTop = 0
+          }
+        }, 50)
+      }
     }
-    if (contentRef.value) {
+    if (contentRef.value && !readerStore.settings.continuousReading) {
       contentRef.value.scrollTop = 0
     }
   })
 }, { flush: 'post' })
+
+watch(() => readerStore.settings.continuousReading, (enabled) => {
+  if (enabled) {
+    loadedChapters.value = new Set([readerStore.currentSpineIndex])
+    currentVisibleChapter.value = readerStore.currentSpineIndex
+  } else {
+    loadedChapters.value = new Set([readerStore.currentSpineIndex])
+  }
+})
+
+watch(chapterTitle, (newTitle) => {
+  if (newTitle && readerStore.currentBook) {
+    const chapterIndex = readerStore.settings.continuousReading 
+      ? currentVisibleChapter.value + 1 
+      : readerStore.currentSpineIndex + 1
+    
+    if (newTitle.match(/^第\s*\d+\s*章/)) {
+      document.title = newTitle
+    } else {
+      document.title = `第${chapterIndex}章 ${newTitle}`
+    }
+  }
+}, { immediate: true })
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   themeStore.initTheme()
   checkFrontendStatus()
   setInterval(checkFrontendStatus, 5000)
+  
+  loadedChapters.value = new Set([readerStore.currentSpineIndex])
+  currentVisibleChapter.value = readerStore.currentSpineIndex
 })
 
 onUnmounted(() => {
@@ -177,6 +329,20 @@ async function checkFrontendStatus() {
     frontendStatus.value = response.ok ? 'running' : 'stopped'
   } catch {
     frontendStatus.value = 'stopped'
+  }
+}
+
+function scrollToTop() {
+  const wrapper = wrapperRef.value
+  if (wrapper) {
+    wrapper.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+function scrollToBottom() {
+  const wrapper = wrapperRef.value
+  if (wrapper) {
+    wrapper.scrollTo({ top: wrapper.scrollHeight, behavior: 'smooth' })
   }
 }
 </script>
@@ -200,6 +366,7 @@ async function checkFrontendStatus() {
         :can-go-prev="readerStore.currentSpineIndex > 0"
         :can-go-next="readerStore.currentSpineIndex < readerStore.totalSpineItems - 1"
         :frontend-status="frontendStatus"
+        :remaining-time-text="readerStore.remainingTimeText"
         @toggle-toc="toggleToc"
         @toggle-settings="toggleSettings"
         @close="readerStore.closeBook"
@@ -208,7 +375,7 @@ async function checkFrontendStatus() {
       />
     </div>
 
-    <div class="reader-content-wrapper" ref="wrapperRef" @click.self="closePanels" @mouseenter="hideToolbar">
+    <div class="reader-content-wrapper" ref="wrapperRef" @click.self="closePanels" @mouseenter="hideToolbar" @scroll="handleScroll">
       <div
         ref="contentRef"
         class="epub-content"
@@ -232,6 +399,19 @@ async function checkFrontendStatus() {
           下一章 ›
         </button>
       </div>
+    </div>
+
+    <div class="scroll-buttons">
+      <button class="scroll-btn scroll-top" @click="scrollToTop" title="滚动到顶部">
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
+        </svg>
+      </button>
+      <button class="scroll-btn scroll-bottom" @click="scrollToBottom" title="滚动到底部">
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/>
+        </svg>
+      </button>
     </div>
 
     <TocPanel
@@ -412,5 +592,96 @@ async function checkFrontendStatus() {
 
 .theme-sepia ::-webkit-scrollbar-thumb:hover {
   background: #a89c7c;
+}
+
+.chapter-section {
+  position: relative;
+}
+
+.chapter-divider {
+  height: 1px;
+  margin: 40px 0;
+  background: linear-gradient(to right, transparent, #ddd, transparent);
+}
+
+[data-theme="dark"] .chapter-divider {
+  background: linear-gradient(to right, transparent, #444, transparent);
+}
+
+.theme-sepia .chapter-divider {
+  background: linear-gradient(to right, transparent, #d4c9a8, transparent);
+}
+
+.scroll-buttons {
+  position: fixed;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 50;
+}
+
+.scroll-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  transition: all 0.25s ease;
+}
+
+.scroll-btn:hover {
+  background: #fff;
+  color: #4a90d9;
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(74, 144, 217, 0.3);
+}
+
+.scroll-btn:active {
+  transform: scale(0.95);
+}
+
+.scroll-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.scroll-btn:hover svg {
+  transform: translateY(-2px);
+}
+
+.scroll-bottom:hover svg {
+  transform: translateY(2px);
+}
+
+[data-theme="dark"] .scroll-btn {
+  background: rgba(40, 40, 60, 0.95);
+  color: #aaa;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .scroll-btn:hover {
+  background: rgba(50, 50, 70, 0.98);
+  color: #6db3f2;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(109, 179, 242, 0.3);
+}
+
+.theme-sepia .scroll-btn {
+  background: rgba(244, 236, 216, 0.95);
+  color: #8b7355;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(139, 115, 85, 0.1);
+}
+
+.theme-sepia .scroll-btn:hover {
+  background: #f4ecd8;
+  color: #6b8e5a;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(107, 142, 90, 0.3);
 }
 </style>

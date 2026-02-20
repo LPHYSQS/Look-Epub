@@ -5,6 +5,26 @@ export interface ReaderSettings {
   theme: 'light' | 'dark' | 'sepia'
   pageWidth: number
   sideMargin: number
+  continuousReading: boolean
+}
+
+export interface ChapterReadingRecord {
+  spineIndex: number
+  charCount: number
+  startTime: number
+  endTime: number
+  durationMs: number
+  charsPerMinute: number
+}
+
+export interface ReadingStats {
+  bookId: string
+  records: ChapterReadingRecord[]
+  totalCharsRead: number
+  totalDurationMs: number
+  averageSpeed: number
+  lastUpdatedAt: number
+  chapterCharCounts: Record<number, number>
 }
 
 export interface ReaderState {
@@ -31,5 +51,6 @@ export const defaultSettings: ReaderSettings = {
   fontFamily: 'serif',
   theme: 'light',
   pageWidth: 800,
-  sideMargin: 40
+  sideMargin: 40,
+  continuousReading: false
 }

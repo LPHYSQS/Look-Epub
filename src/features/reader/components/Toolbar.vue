@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+
 defineProps<{
   title: string
   chapterTitle: string
@@ -6,6 +8,7 @@ defineProps<{
   canGoPrev: boolean
   canGoNext: boolean
   frontendStatus?: 'running' | 'stopped' | 'checking'
+  remainingTimeText?: string
 }>()
 
 const emit = defineEmits<{
@@ -15,6 +18,30 @@ const emit = defineEmits<{
   prevPage: []
   nextPage: []
 }>()
+
+const isFullscreen = ref(false)
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen()
+    isFullscreen.value = true
+  } else {
+    document.exitFullscreen()
+    isFullscreen.value = false
+  }
+}
+
+function handleFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
+}
+
+onMounted(() => {
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+})
 </script>
 
 <template>
@@ -42,11 +69,19 @@ const emit = defineEmits<{
           <path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
         </svg>
       </button>
-      <div class="progress-container">
-        <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+      <div class="progress-wrapper">
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+          </div>
+          <span class="progress-text">{{ progress }}%</span>
         </div>
-        <span class="progress-text">{{ progress }}%</span>
+        <div class="remaining-time" v-if="remainingTimeText">
+          <svg viewBox="0 0 24 24" width="12" height="12">
+            <path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+          </svg>
+          <span>预计剩余 {{ remainingTimeText }}</span>
+        </div>
       </div>
       <button 
         class="toolbar-btn nav-btn" 
@@ -65,6 +100,12 @@ const emit = defineEmits<{
         <span class="status-indicator"></span>
         <span class="status-text">前端</span>
       </div>
+      <button class="toolbar-btn fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出沉浸式阅读' : '沉浸式阅读'">
+        <svg viewBox="0 0 24 24" width="20" height="20" class="fullscreen-icon" :class="{ 'is-fullscreen': isFullscreen }">
+          <path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" class="icon-expand"/>
+          <path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" class="icon-compress"/>
+        </svg>
+      </button>
       <button class="toolbar-btn" @click="emit('toggleToc')" title="目录">
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path fill="currentColor" d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
@@ -226,6 +267,13 @@ const emit = defineEmits<{
   background: rgba(255, 255, 255, 0.1);
 }
 
+.progress-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
 .progress-container {
   display: flex;
   align-items: center;
@@ -250,6 +298,27 @@ const emit = defineEmits<{
   font-size: 12px;
   color: #999;
   min-width: 40px;
+}
+
+.remaining-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.remaining-time svg {
+  opacity: 0.7;
+}
+
+[data-theme="dark"] .remaining-time {
+  color: #777;
+}
+
+.theme-sepia .remaining-time {
+  color: #8b7355;
 }
 
 .toolbar-right {
@@ -417,5 +486,46 @@ const emit = defineEmits<{
 
 [data-theme="dark"] .status-text {
   color: #aaa;
+}
+
+.fullscreen-btn {
+  position: relative;
+}
+
+.fullscreen-icon {
+  transition: transform 0.3s ease;
+}
+
+.fullscreen-icon .icon-expand {
+  opacity: 1;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fullscreen-icon .icon-compress {
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.fullscreen-icon.is-fullscreen .icon-expand {
+  opacity: 0;
+}
+
+.fullscreen-icon.is-fullscreen .icon-compress {
+  opacity: 1;
+}
+
+.fullscreen-btn:hover .fullscreen-icon {
+  transform: scale(1.1);
+}
+
+[data-theme="dark"] .fullscreen-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.theme-sepia .fullscreen-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 </style>
