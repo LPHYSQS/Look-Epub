@@ -1,7 +1,7 @@
 # Look Epub
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/Vue-3.5.13-42b883" alt="Vue">
   <img src="https://img.shields.io/badge/TypeScript-5.6.3-3178c6" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-6.0.5-646CFF" alt="Vite">
@@ -31,6 +31,15 @@ Look Epub is a fully local EPUB e-book reader designed for users who seek a clea
 - **Page Navigation**: Support keyboard arrow keys and spacebar for page turning
 - **Progress Memory**: Automatically save and restore reading progress
 - **Link Navigation**: Support internal EPUB link navigation
+- **Immersive Reading**: Fullscreen mode for focused reading
+- **Continuous Reading**: Auto-load next chapter when scrolling to bottom
+- **Quick Scroll**: One-click jump to page top/bottom
+
+### ⏱️ Smart Reading Statistics
+- **Reading Time Estimation**: Calculate remaining reading time based on actual reading speed
+- **Character Count**: Accurate chapter character count for better estimation
+- **Weighted Average**: Recent reading speed weighted higher for current pace
+- **Data Persistence**: Reading statistics stored locally
 
 ### 🎨 Theme Modes
 - **Light Mode**: Bright and refreshing reading interface
@@ -39,6 +48,9 @@ Look Epub is a fully local EPUB e-book reader designed for users who seek a clea
 
 ### ⚙️ Reading Settings
 - **Font Size**: Adjustable to personal preference
+- **Line Height**: Adjust reading line spacing
+- **Font Selection**: Multiple fonts available
+- **Page Width**: Customize reading area width
 - **Reading Themes**: Switch between three theme modes
 
 ## 🛠️ Tech Stack
@@ -147,13 +159,15 @@ Look-Epub/
 │   │   ├── epub.ts         # EPUB related types
 │   │   └── reader.ts       # Reader types
 │   ├── utils/              # Utility functions
-│   │   └── fonts.ts        # Font utilities
+│   │   ├── fonts.ts        # Font utilities
+│   │   └── reading-stats.ts # Reading statistics
 │   ├── App.vue             # Root component
 │   └── main.ts             # Entry point
 ├── index.html              # HTML entry
 ├── package.json            # Project config
 ├── tsconfig.json           # TypeScript config
 ├── vite.config.ts          # Vite config
+├── CHANGELOG.md            # Changelog
 └── README.md               # Project documentation
 ```
 
@@ -182,6 +196,7 @@ Uses IndexedDB to store book data:
 - Metadata information
 - Reading progress
 - Custom settings
+- Reading statistics
 
 ## 📄 License
 
@@ -193,12 +208,20 @@ This project is open-sourced under the MIT License.
 
 ## 📝 Changelog
 
-### v0.2 (2026-02-16)
+### V1.0 (2026-02-20)
+- Added smart reading time estimation system
+- Added immersive reading mode (fullscreen)
+- Added continuous reading mode (auto-load next chapter)
+- Added quick scroll buttons
+- Browser tab title synchronization
+- New app icon design
+
+### V0.2 (2026-02-16)
 - Reader toolbar optimization: hover to expand/collapse with smooth animation
 - TOC panel optimization: auto-scroll to current chapter when opened
 - Toolbar hover zone detection optimization: improved interaction sensitivity
 
-### v0.1 (2026-01-15)
+### V0.1 (2026-01-15)
 - Initial release
 - Library management support (import, search, edit, delete)
 - EPUB reader support
